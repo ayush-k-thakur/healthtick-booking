@@ -1,4 +1,3 @@
-import React from "react";
 import { FiClock, FiTrash } from "react-icons/fi";
 
 const statusStyles = {
