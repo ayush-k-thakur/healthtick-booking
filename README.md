@@ -12,7 +12,7 @@ A React + TypeScript + Vite app for managing health coach call bookings.
    ```
 
 2. **Configure Firebase:**
-   - Update the `.env` file with your Firebase project credentials (already present in this repo).
+   - Update the `.env` file with your Firebase project credentials.
 
 3. **Start the development server:**
    ```sh
