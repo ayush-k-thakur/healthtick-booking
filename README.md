@@ -41,7 +41,7 @@ Each document represents a booked slot and has the following fields:
 
 | Field         | Type     | Description                                                                 |
 |---------------|----------|-----------------------------------------------------------------------------|
-| `client`      | string   | Client name and phone, e.g. `"Sneha Joshi (9123901234)"`                    |
+| `client`      | string   | Client name and phone number, e.g. `"{name: Ayush Thakur, number:9123901234}"`                    |
 | `type`        | string   | `"onboarding"` or `"followup"`                                              |
 | `time`        | string   | Time slot, e.g. `"10:30 AM"`                                                |
 | `date`        | string   | Date in `"yyyy-MM-dd"` format                                               |
