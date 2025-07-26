@@ -1,69 +1,64 @@
-# React + TypeScript + Vite
+# HealthTick Booking Calendar
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React + TypeScript + Vite app for managing health coach call bookings.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## How to Run the App
 
-## Expanding the ESLint configuration
+1. **Install dependencies:**
+   ```sh
+   npm install
+   ```
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+2. **Configure Firebase:**
+   - Update the `.env` file with your Firebase project credentials (already present in this repo).
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+3. **Start the development server:**
+   ```sh
+   npm run dev
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+4. **Build for production:**
+   ```sh
+   npm run build
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+5. **Preview production build:**
+   ```sh
+   npm run preview
+   ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Firebase Schema Description
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+The app uses a single Firestore collection: `bookings`.
+
+### Collection: `bookings`
+
+Each document represents a booked slot and has the following fields:
+
+| Field         | Type     | Description                                                                 |
+|---------------|----------|-----------------------------------------------------------------------------|
+| `client`      | string   | Client name and phone, e.g. `"Sneha Joshi (9123901234)"`                    |
+| `type`        | string   | `"onboarding"` or `"followup"`                                              |
+| `time`        | string   | Time slot, e.g. `"10:30 AM"`                                                |
+| `date`        | string   | Date in `"yyyy-MM-dd"` format                                               |
+| `createdAt`   | string   | ISO timestamp when the booking was created                                  |
+| `followupDay` | string   | (Only for follow-up) Day of week, e.g. `"Monday"`                           |
+
+- **Onboarding bookings**: Only for the selected date.
+- **Follow-up bookings**: Repeat weekly on the same weekday (`followupDay`).
+
+---
+
+## Assumptions Made
+
+- **Clients** are pre-defined in [`src/data.ts`](src/data.ts) and not managed via Firebase.
+- **Time slots** are fixed and listed in [`initialSlots`](src/data.ts).
+- **Follow-up calls** repeat weekly on the same weekday as the original booking.
+- **Onboarding calls** are 40 minutes; **follow-up calls** are 20 minutes.
+- Only one booking per slot per day is allowed.
+- Deleting a booking removes it only for the selected day (not future repeats).
+- No authentication is implemented; all users can book and delete slots.
