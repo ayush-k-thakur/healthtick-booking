@@ -1,9 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
-import db from "../firebase";
-import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
+
+import { useState } from "react";
 import { format } from "date-fns";
-import { clients } from "../data"; // adjust path if needed
+import { addBooking, isSlotTaken } from "../services/bookingServices";
+import ClientSearch from "./ClientSearch";
+import { RxCross1 } from "react-icons/rx";
+import { toast } from "react-toastify";
+
+type ClientType = {
+  name: string;
+  number: string;
+};
 
 type Props = {
   selectedTime: string;
@@ -23,62 +30,41 @@ export default function BookingModal({
   fetchDaySlots,
 }: Props) {
   const [clientQuery, setClientQuery] = useState("");
-  const [filteredClients, setFilteredClients] = useState(clients);
-  const [client, setClient] = useState("");
+  const [selectedClient, setSelectedClient] = useState<ClientType | null>(null);
   const [callType, setCallType] = useState<"onboarding" | "followup">("followup");
   const [loading, setLoading] = useState(false);
 
   const formattedDate = format(selectedDate, "yyyy-MM-dd");
   const followupDay = format(selectedDate, "EEEE");
 
-  useEffect(() => {
-    const lower = clientQuery.toLowerCase();
-    const filtered = clients.filter(
-      (c) =>
-        c.name.toLowerCase().includes(lower) || c.number.includes(lower)
-    );
-    setFilteredClients(filtered);
-  }, [clientQuery]);
-
-  const isSlotTaken = async () => {
-    const q = query(
-      collection(db, "bookings"),
-      where("date", "==", formattedDate),
-      where("time", "==", selectedTime)
-    );
-    const snap = await getDocs(q);
-    return !snap.empty;
-  };
-
   const handleBooking = async () => {
-    if (!client) return alert("Please select a client");
+    if (!selectedClient) return alert("Please select a client");
 
     setLoading(true);
-
-    const taken = await isSlotTaken();
-    if (taken) {
-      alert("This slot is already booked.");
-      setLoading(false);
-      return;
-    }
-
-    const bookingData = {
-      client,
-      type: callType,
-      time: selectedTime,
-      date: formattedDate,
-      createdAt: new Date().toISOString(),
-      ...(callType === "followup" && { followupDay }),
-    };
-
     try {
-      await addDoc(collection(db, "bookings"), bookingData);
+      const taken = await isSlotTaken(formattedDate, selectedTime);
+      if (taken) {
+        toast.error("This slot is already booked.");
+        return;
+      }
+
+      const bookingData = {
+        client: selectedClient,
+        type: callType,
+        time: selectedTime,
+        date: formattedDate,
+        createdAt: new Date().toISOString(),
+        ...(callType === "followup" && { followupDay }),
+      };
+
+      await addBooking(bookingData);
       onBook();
       fetchDaySlots();
       setShowBookingModal(false);
-    } catch (error) {
-      console.error("Booking Error:", error);
-      alert("Something went wrong while booking.");
+      toast("Booking successful!");
+    } catch (err) {
+      console.error("Booking Error:", err);
+      toast.error("Error occurred while booking.");
     } finally {
       setLoading(false);
     }
@@ -89,10 +75,10 @@ export default function BookingModal({
       <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
         <button
           onClick={() => setShowBookingModal(false)}
-          className="absolute top-3 right-3 text-xl"
+          className="absolute top-3 right-3 text-xl cursor-pointer"
           disabled={loading}
         >
-          &times;
+          <RxCross1 className="inline-block" />
         </button>
 
         <h2 className="text-lg font-semibold mb-4">Book New Call</h2>
@@ -101,55 +87,46 @@ export default function BookingModal({
           📅 {formattedDate} at {selectedTime}
         </div>
 
-        <label className="text-sm font-medium mb-1 block">Search Client (by name or number)</label>
+        <label className="text-sm font-medium mb-1 block">Search Client</label>
         <input
           type="text"
           value={clientQuery}
           onChange={(e) => setClientQuery(e.target.value)}
-          placeholder="Start typing name or number..."
+          placeholder="Search by name or number"
           className="w-full border border-gray-300 rounded px-3 py-2 mb-3"
           disabled={loading}
         />
 
-        {!client && clientQuery.length > 0 && (
-          <div className="w-[90%] h-40 overflow-y-auto border border-gray-200 rounded mb-5 absolute z-10 bg-white shadow-lg">
-            {filteredClients.length > 0 ? (
-              filteredClients.map((c) => (
-                <div
-                  key={c.number}
-                  onClick={() => {
-                    setClient(`${c.name} (${c.number})`);
-                    setClientQuery(`${c.name}`);
-                  }}
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                >
-                  {c.name} - {c.number}
-                </div>
-              ))
-            ) : (
-              <div className="px-3 py-2 text-gray-500 text-sm">No match found</div>
-            )}
-          </div>
+        {!selectedClient && clientQuery.length > 0 && (
+          <ClientSearch
+            query={clientQuery}
+            onSelect={(c) => {
+              setSelectedClient(c);
+              setClientQuery(c.name);
+            }}
+          />
         )}
 
-        {client && (
-          <div className="mb-5 text-sm text-green-700 bg-green-100 px-3 py-2 rounded flex justify-between items-center">
-            <span>Selected: {client}</span>
+        {selectedClient && (
+          <div className="mb-4 text-sm text-green-700 bg-green-100 px-3 py-2 rounded flex justify-between items-center">
+            <span>
+              Selected: {selectedClient.name} ({selectedClient.number})
+            </span>
             <button
               onClick={() => {
-                setClient("");
+                setSelectedClient(null);
                 setClientQuery("");
               }}
-              className="text-red-500 text-sm"
+              className="text-red-500 text-sm cursor-pointer"
             >
-              ✕
+              <RxCross1 className="inline-block scale-150" />
             </button>
           </div>
         )}
 
-        <label className="text-sm font-medium mb-2 block">Call Type</label>
-        <div className="mb-6 space-y-3">
-          <label className="flex items-center gap-2">
+        <label className="text-sm font-medium mb-1 block">Call Type</label>
+        <div className="mb-5 space-y-3">
+          <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="radio"
               name="callType"
@@ -160,7 +137,7 @@ export default function BookingModal({
             />
             <span>Onboarding (40 mins)</span>
           </label>
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="radio"
               name="callType"
@@ -171,24 +148,23 @@ export default function BookingModal({
             />
             <span>Follow-up (20 mins)</span>
           </label>
-          <span className="text-[13px] text-blue-700 relative top-[-15px] left-[20px] underline">
-            repeats weekly on {followupDay}
+          <span className="text-[12px] text-blue-700 ml-6 underline relative top-[-17px]">
+            Repeats weekly on {followupDay}
           </span>
         </div>
 
         <div className="flex justify-center gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 border rounded text-gray-600 flex-1 hover:bg-gray-100 transition-colors cursor-pointer"
+            className="px-4 py-2 border rounded text-gray-600 flex-1 hover:bg-gray-100 transition"
             disabled={loading}
           >
             Cancel
           </button>
           <button
             onClick={handleBooking}
-            className={`px-4 py-2 bg-blue-600 text-white rounded flex-1 hover:bg-blue-700 transition-colors ${
-              loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-            }`}
+            className={`px-4 py-2 bg-blue-600 text-white rounded flex-1 hover:bg-blue-700 transition ${loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+              }`}
             disabled={loading}
           >
             {loading ? "Booking..." : "Book"}
